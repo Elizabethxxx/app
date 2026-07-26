@@ -42,6 +42,22 @@ pub struct AppConfig {
     /// replay protection survives restarts and redeploys.
     #[serde(default = "default_cctp_nonce_store_path")]
     pub cctp_nonce_store_path: String,
+    /// How often, in seconds, the historical routes garbage collector wakes
+    /// up to prune stale rows. Defaults to 24 hours.
+    #[serde(default = "default_gc_interval_secs")]
+    pub gc_interval_secs: u64,
+    /// Age, in days, after which a `historical_routes` row is considered
+    /// stale and eligible for deletion.
+    #[serde(default = "default_gc_retention_days")]
+    pub gc_retention_days: i64,
+    /// Maximum number of rows deleted per batch by the GC worker. Keeping
+    /// this small bounds how long any single `DELETE` holds row locks, so
+    /// the table stays available for concurrent reads.
+    #[serde(default = "default_gc_batch_size")]
+    pub gc_batch_size: i64,
+    /// Delay, in milliseconds, between successive delete batches.
+    #[serde(default = "default_gc_batch_delay_ms")]
+    pub gc_batch_delay_ms: u64,
 }
 
 fn default_port() -> u16 {
@@ -65,6 +81,22 @@ fn default_cctp_nonce_store_path() -> String {
     "data/cctp_consumed_nonces.log".to_string()
 }
 
+fn default_gc_interval_secs() -> u64 {
+    24 * 60 * 60
+}
+
+fn default_gc_retention_days() -> i64 {
+    7
+}
+
+fn default_gc_batch_size() -> i64 {
+    5000
+}
+
+fn default_gc_batch_delay_ms() -> u64 {
+    50
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -76,6 +108,10 @@ impl Default for AppConfig {
             eth_rpc_url: default_eth_rpc_url(),
             cctp_message_transmitter: default_cctp_message_transmitter(),
             cctp_nonce_store_path: default_cctp_nonce_store_path(),
+            gc_interval_secs: default_gc_interval_secs(),
+            gc_retention_days: default_gc_retention_days(),
+            gc_batch_size: default_gc_batch_size(),
+            gc_batch_delay_ms: default_gc_batch_delay_ms(),
         }
     }
 }
