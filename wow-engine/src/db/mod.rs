@@ -54,6 +54,12 @@ impl Database {
         sqlx::query("SELECT 1").fetch_one(&self.pool.0).await?;
         Ok(())
     }
+
+    /// Exposes the underlying pool for callers (e.g. the historical routes GC
+    /// worker) that need to run queries outside of an explicit transaction.
+    pub fn pool(&self) -> &PgPool {
+        &self.pool.0
+    }
 }
 
 #[cfg(test)]

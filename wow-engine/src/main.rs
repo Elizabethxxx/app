@@ -52,6 +52,20 @@ async fn main() -> anyhow::Result<()> {
                     return Err(err.into());
                 }
                 tracing::info!("Database migrations applied successfully.");
+
+                // Background task: prunes stale historical_routes rows on a
+                // fixed interval so the archive table doesn't grow without
+                // bound. Runs independently of request traffic and never
+                // takes down the process on a transient DB error.
+                let gc_config = wow_engine::gc::GcConfig::from_app_config(&config);
+                wow_engine::gc::spawn(db.clone(), gc_config);
+                tracing::info!(
+                    "historical_routes GC worker started (interval={}s, retention={}d, batch_size={})",
+                    gc_config.interval.as_secs(),
+                    config.gc_retention_days,
+                    gc_config.batch_size
+                );
+
                 Some(db)
             }
             Err(err) => {
